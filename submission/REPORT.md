@@ -59,7 +59,31 @@ Dữ liệu tổng hợp từ `02_error_list_v1.csv` (danh sách lỗi trước 
 3. **Ảnh trùng lặp bị biến đổi góc nhìn / crop mạnh:** Khi ảnh bị crop sâu chỉ giữ lại một góc nhỏ (< 30% diện tích) rồi lật ngang, khoảng cách pHash vượt quá ngưỡng 10 nên không thể phát hiện near-duplicate.
 
 ## 5. Train: raw vs clean (tùy chọn, chấm riêng)
-Chưa chạy do môi trường cục bộ không trang bị GPU phù hợp và thời lượng thực hiện bài lab tập trung vào phần lõi kiểm định chất lượng nhãn (QC core pipeline). Bài nộp được kiểm định và xác nhận vượt qua toàn bộ tiêu chuẩn qua `make check-core`.
+Thí nghiệm huấn luyện so sánh công bằng trên Google Colab (GPU T4) sử dụng mô hình `yolo26n.pt`, 20 epochs, batch 16, cùng tập val (`data/gold_val`, 40 ảnh) và tập test chuẩn (`data/test`, 100 ảnh nhãn người sạch), chạy trên 2 seed (0 và 1).
+
+**Bảng kết quả tổng hợp từ `submission/results/comparison.md`:**
+
+| biến thể | #ảnh train | số seed | map50 (TB ± độ lệch) | map50_95 (TB ± độ lệch) | precision (TB ± độ lệch) | recall (TB ± độ lệch) |
+|---|---|---|---|---|---|---|
+| `raw` | 224 | 2 | 0.726 ± 0.000 | 0.512 ± 0.004 | 0.764 ± 0.061 | 0.649 ± 0.028 |
+| `clean` | 202 | 2 | 0.701 ± 0.025 | 0.487 ± 0.008 | 0.759 ± 0.003 | 0.625 ± 0.019 |
+
+Chênh lệch mAP50 (clean − raw) = **-0.025** (-2.5%).
+
+**Phân tích và kết luận trung thực:**
+1. **So sánh chênh lệch với độ lệch chuẩn giữa các seed (Độ nhiễu):**
+   - Độ chênh lệch mAP50 giữa `clean` và `raw` là $-0.025$.
+   - Trong khi đó, độ lệch chuẩn giữa 2 seed của chính biến thể `clean` là $\pm 0.025$ (seed 0 đạt $0.7180$, seed 1 đạt $0.6832$, biên độ biến thiên giữa 2 lần chạy ngẫu nhiên lên tới $0.0348$).
+   - Điều này chứng minh rằng **độ chênh lệch giữa hai biến thể hoàn toàn nằm trong biên độ nhiễu ngẫu nhiên** giữa các seed khởi tạo, chưa đủ cơ sở thống kê để kết luận chất lượng model thay đổi lớn.
+2. **Kết luận trung thực:**
+   - Dưới góc độ khoa học dữ liệu, không thể vội vàng tuyên bố "clean tốt hơn raw" hay "clean làm giảm chất lượng". Sự dao động -0.025 là bình thường trên các tập dữ liệu kích thước nhỏ khi số lượng seed còn ít ($\le 2$).
+3. **Các giả thuyết khoa học giải thích kết quả:**
+   - **Giả thuyết 1: Hiện tượng "đẹp giả tạo" do rò rỉ dữ liệu (Data Leakage) ở tập `raw`:** Tập `raw` ban đầu chứa 5 ảnh trùng lặp với tập test (`LEAK_TEST`). Khi huấn luyện trên `raw`, mô hình đã vô tình "học vẹt" các đặc trưng của những ảnh này, khiến metric đo được trên test cao một cách giả tạo. Khi pipeline loại bỏ triệt để 5 ảnh rò rỉ này ở biến thể `clean`, kết quả của `clean` phản ánh năng lực tổng quát hoá thực tế và trung thực hơn.
+   - **Giả thuyết 2: Đánh đổi số lượng ảnh (Dataset size reduction) ở quy mô nhỏ:** Khi pipeline loại bỏ 22 ảnh ở cửa vào intake (ảnh hỏng, quá nhỏ, trùng lặp), số ảnh train giảm từ 224 xuống 202 (giảm gần 10%). Ở quy mô dữ liệu rất nhỏ (~200 ảnh), việc mất đi 22 ảnh có thể làm giảm nhẹ độ bao phủ mẫu đa dạng của model trước khi lợi ích từ nhãn sạch kịp bù đắp.
+   - **Giả thuyết 3: Tác động của kích thước tập test (100 ảnh):** Tập test chỉ có 100 ảnh nên sai lệch dự đoán chỉ trên 2–3 bounding box đã làm metric mAP dịch chuyển 2–3%.
+4. **Cách kiểm chứng tiếp theo:**
+   - Chạy thêm seed 2, 3, 4 để có ít nhất 5 seed và thực hiện kiểm định giả thuyết thống kê (t-test) hoặc bootstrap.
+   - Mở rộng tập test chuẩn lên $\ge 500$ ảnh độc lập để giảm phương sai ngẫu nhiên trong việc đo lường mAP.
 
 ## 6. Quyết định và ghi chú AI
 **(a) Quyết định cuối cùng:**
