@@ -1,0 +1,18 @@
+{
+  "verdict": {
+    "decision": "Hold",
+    "n_errors": 0,
+    "n_warn_images": 38,
+    "n_images": 202,
+    "warn_ratio": 0.1881,
+    "reasons": [
+      "Tỉ lệ ảnh có cảnh báo 18.81% (38/202) >= ngưỡng 10.00%"
+    ]
+  },
+  "reviewed": 80,
+  "budget": 80,
+  "seconds": 1.9,
+  "exported": "/Users/tanoera/Documents/K5-L23-DAY09-2A202603251-AutoQCPipeline-main/submission/export/clean_v1",
+  "config_sha1": "29f609e249e5b07b4c173f9cf0205fe94e727fbe",
+  "review_sim_sha1": "7988ca22827f780a7043a2300490e679a1697154"
+}
